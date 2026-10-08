@@ -19,7 +19,7 @@ class GeoNamesImporter {
    $ci=$this->download('countryInfo.txt',$dir.'/countryInfo.txt'); $all=$this->download('allCountries.zip',$dir.'/allCountries.zip'); $m49=$this->parseM49($this->getText(self::M49));
    $version=$all['last_modified']?:now()->toDateString(); $this->stats['source_version']=$version;
    $countries=$this->parseCountryInfo($ci['path'],$m49,$dir.'/allCountries.zip');
-   DB::transaction(function()use($countries,$all,$dir){ DB::table('cities')->delete(); DB::table('countries')->delete(); $this->importCountries($countries); $ids=Country::pluck('id','iso2')->mapWithKeys(fn($id,$iso)=>[strtoupper($iso)=>$id])->all(); $this->importPlaces($all['path'],$ids); },600);
+   DB::table('cities')->delete(); DB::table('countries')->delete(); $this->importCountries($countries); $ids=Country::pluck('id','iso2')->mapWithKeys(fn($id,$iso)=>[strtoupper($iso)=>$id])->all(); $this->importPlaces($all['path'],$ids);
    $this->stats['status']='completed';
    DB::table('geo_import_runs')->where('id',$run)->update(['source_version'=>$version,'last_updated_at'=>now(),'license'=>self::LICENSE,'countries_imported'=>$this->stats['countries_imported'],'cities_imported'=>$this->stats['cities_imported'],'countries_missing'=>$this->stats['countries_missing'],'duplicate_countries'=>$this->stats['duplicate_countries'],'duplicate_cities'=>$this->stats['duplicate_cities'],'invalid_coordinates'=>$this->stats['invalid_coordinates'],'status'=>'completed','metadata'=>json_encode(['m49_source'=>self::M49,'dataset'=>'allCountries.zip']),'updated_at'=>now()]);
    if(!$keep)File::deleteDirectory($dir);
