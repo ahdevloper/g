@@ -23,7 +23,7 @@ Laravel is accessible, powerful, and provides tools required for large, robust a
 
 ## Learning Laravel
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern Laravel applications, making it a breeze to get started.
 
 You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
 
@@ -31,7 +31,7 @@ If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Lar
 
 ## Laravel Sponsors
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+We would like to extend our thanks to Laravel sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
 
 ### Premium Partners
 
@@ -55,7 +55,7 @@ Thank you for considering contributing to the Laravel framework! The contributio
 
 ## Code of Conduct
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+In order to ensure that the Laravel framework is welcoming, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
 
 ## Security Vulnerabilities
 
@@ -64,3 +64,42 @@ If you discover a security vulnerability within Laravel, please send an e-mail t
 ## License
 
 The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## Global Geography
+
+This application includes a reproducible global geography subsystem based on open GeoNames data.
+
+### Coverage
+
+- Countries: GeoNames country extract.
+- Places: all GeoNames records with feature class P in allCountries.zip, rather than a small hand-maintained list.
+- Region/subregion: UN M49 enrichment.
+- Search: name, English name, ASCII name and alternate names.
+- Nearby search: coordinate prefilter plus Haversine distance.
+- Pagination and indexes are used so the API does not load the full dataset.
+
+### Import
+
+    php artisan migrate
+    php artisan geo:import
+
+For a later refresh:
+
+    php artisan geo:update
+
+The complete dataset is generated locally from the current source snapshot instead of committing a large, frequently changing dump to GitHub.
+
+### API
+
+    GET /api/countries
+    GET /api/countries/{id}
+    GET /api/countries/{id}/cities
+    GET /api/cities
+    GET /api/cities/search?q=riyadh
+    GET /api/cities/nearby?lat=24.7136&lng=46.6753&radius=25
+
+### Statistics
+
+Import statistics are recorded in geo_import_runs. Counts should be published only after a real import against a named source snapshot.
+
+See docs/geo-data-sources.md for source and licensing details.
