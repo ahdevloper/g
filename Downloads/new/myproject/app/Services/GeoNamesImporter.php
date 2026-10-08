@@ -46,11 +46,11 @@ class GeoNamesImporter {
  }
  private function importCountries(array $rows):void {foreach(array_chunk($rows,100)as$chunk){DB::table('countries')->insert($chunk);$this->stats['countries_imported']+=count($chunk);}}
  private function importPlaces(string $zipPath,array $countryIds):void {
-  $z=new ZipArchive();if($z->open($zipPath)!==true)throw new RuntimeException('Unable to open allCountries.zip');$s=$z->getStream($z->getNameIndex(0));if(!$s)throw new RuntimeException('Unable to read GeoNames text stream');$batch=[];$seen=[];
-  while(($line=fgets($s))!==false){$c=explode("\t",rtrim($line,"\r\n"));if(count($c)<19||($c[6]??'')!=='P')continue;$id=(int)($c[0]??0);$cc=strtoupper(trim($c[8]??''));if($id<=0||!isset($countryIds[$cc]))continue;if(isset($seen[$id])){$this->stats['duplicate_cities']++;continue;}$seen[$id]=1;$lat=$c[4]??null;$lng=$c[5]??null;if(!is_numeric($lat)||!is_numeric($lng)||(float)$lat<-90||(float)$lat>90||(float)$lng<-180||(float)$lng>180){$this->stats['invalid_coordinates']++;continue;}
+  $z=new ZipArchive();if($z->open($zipPath)!==true)throw new RuntimeException('Unable to open allCountries.zip');$s=$z->getStream($z->getNameIndex(0));if(!$s)throw new RuntimeException('Unable to read GeoNames text stream');$batch=[];
+  while(($line=fgets($s))!==false){$c=explode("\t",rtrim($line,"\r\n"));if(count($c)<19||($c[6]??'')!=='P')continue;$id=(int)($c[0]??0);$cc=strtoupper(trim($c[8]??''));if($id<=0||!isset($countryIds[$cc]))continue;$lat=$c[4]??null;$lng=$c[5]??null;if(!is_numeric($lat)||!is_numeric($lng)||(float)$lat<-90||(float)$lat>90||(float)$lng<-180||(float)$lng>180){$this->stats['invalid_coordinates']++;continue;}
    $batch[]=['id'=>$id,'country_id'=>$countryIds[$cc],'name'=>mb_substr(trim($c[1]??''),0,200),'name_en'=>mb_substr(trim($c[1]??''),0,200),'ascii_name'=>mb_substr(trim($c[2]??''),0,200),'latitude'=>(float)$lat,'longitude'=>(float)$lng,'population'=>max(0,(int)($c[14]??0)),'feature_code'=>trim($c[7]??''),'admin1'=>trim($c[10]??'')?:null,'admin2'=>trim($c[11]??'')?:null,'timezone'=>trim($c[17]??'')?:null,'elevation'=>is_numeric($c[15]??null)?(int)$c[15]:null,'alternate_names'=>trim($c[3]??'')?:null,'source_updated_at'=>preg_match('/^\d{4}-\d{2}-\d{2}$/',$c[18]??'')?$c[18]:null,'created_at'=>now(),'updated_at'=>now()];
-   if(count($batch)>=2000){DB::table('cities')->insert($batch);$this->stats['cities_imported']+=count($batch);$batch=[];}
+   if(count($batch)>=2000){$inserted=DB::table('cities')->insertOrIgnore($batch);$this->stats['cities_imported']+=$inserted;$this->stats['duplicate_cities']+=count($batch)-$inserted;$batch=[];}
   }
-  if($batch){DB::table('cities')->insert($batch);$this->stats['cities_imported']+=count($batch);}fclose($s);$z->close();$this->stats['countries_missing']=max(0,count($countryIds)-Country::whereIn('id',array_values($countryIds))->count());
+  if($batch){$inserted=DB::table('cities')->insertOrIgnore($batch);$this->stats['cities_imported']+=$inserted;$this->stats['duplicate_cities']+=count($batch)-$inserted;}fclose($s);$z->close();$this->stats['countries_missing']=max(0,count($countryIds)-Country::whereIn('id',array_values($countryIds))->count());
  }
 }
