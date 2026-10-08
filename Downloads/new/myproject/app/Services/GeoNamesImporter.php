@@ -11,7 +11,7 @@ class GeoNamesImporter {
  private const BASE='https://download.geonames.org/export/dump/';
  private const M49='https://unstats.un.org/unsd/methodology/m49/overview/';
  private const LICENSE='CC BY 4.0';
- private array $stats=['status'=>'running','countries_imported'=>0,'cities_imported'=>0,'countries_missing'=>0,'duplicate_countries'=>0,'duplicate_cities'=>0,'invalid_coordinates'=>0];
+ private array $stats=['status'=>'running','countries_imported'=>0,'cities_imported'=>0,'countries_missing'=>0,'duplicate_countries'=>0,'duplicate_cities'=>0,'invalid_coordinates'=>0,'source_country_count'=>0];
  public function run(bool $keep=false): array {
   $run=DB::table('geo_import_runs')->insertGetId(['source'=>'GeoNames','license'=>self::LICENSE,'imported_at'=>now(),'status'=>'running','created_at'=>now(),'updated_at'=>now()]);
   $dir=storage_path('app/geo-source'); File::ensureDirectoryExists($dir);
@@ -39,7 +39,7 @@ class GeoNamesImporter {
   } fclose($h);
   $cap=[];$z=new ZipArchive(); if($z->open($zipPath)!==true)throw new RuntimeException('Unable to open allCountries.zip');$s=$z->getStream($z->getNameIndex(0));
   while(($line=fgets($s))!==false){$c=explode("\t",rtrim($line,"\r\n"));if(count($c)<19||($c[6]??'')!=='P')continue;$iso=strtoupper($c[8]??'');if(!isset($seen[$iso]))continue;if(in_array($c[7]??'', ['PPLC','PPLA','PPLA2','PPLA3','PPLA4'],true))$cap[$iso]=['lat'=>$c[4]??null,'lng'=>$c[5]??null,'timezone'=>$c[17]??null];}
-  fclose($s);$z->close(); foreach($rows as &$r){$x=$cap[$r['iso2']]??null;if($x&&is_numeric($x['lat'])&&is_numeric($x['lng'])){$r['latitude']=(float)$x['lat'];$r['longitude']=(float)$x['lng'];$r['timezone']=$x['timezone']?:null;}}unset($r);return $rows;
+  fclose($s);$z->close(); foreach($rows as &$r){$x=$cap[$r['iso2']]??null;if($x&&is_numeric($x['lat'])&&is_numeric($x['lng'])){$r['latitude']=(float)$x['lat'];$r['longitude']=(float)$x['lng'];$r['timezone']=$x['timezone']?:null;}}unset($r);$this->stats['source_country_count']=count($rows); return $rows;
  }
  private function parseM49(string $html):array {
   $map=[];preg_match_all('/<tr[^>]*>(.*?)<\/tr>/is',$html,$rows);foreach($rows[1]??[] as $row){preg_match_all('/<t[dh][^>]*>(.*?)<\/t[dh]>/is',$row,$cells);$cells=array_map(fn($v)=>trim(html_entity_decode(strip_tags($v),ENT_QUOTES|ENT_HTML5,'UTF-8')),$cells[1]??[]);if(count($cells)<10)continue;$iso=strtoupper($cells[10]??'');if(!preg_match('/^[A-Z]{3}$/',$iso)||isset($map[$iso]))continue;$map[$iso]=['region'=>$cells[3]??null,'subregion'=>$cells[5]??null];}return $map;
@@ -51,6 +51,6 @@ class GeoNamesImporter {
    $batch[]=['id'=>$id,'country_id'=>$countryIds[$cc],'name'=>mb_substr(trim($c[1]??''),0,200),'name_en'=>mb_substr(trim($c[1]??''),0,200),'ascii_name'=>mb_substr(trim($c[2]??''),0,200),'latitude'=>(float)$lat,'longitude'=>(float)$lng,'population'=>max(0,(int)($c[14]??0)),'feature_code'=>trim($c[7]??''),'admin1'=>trim($c[10]??'')?:null,'admin2'=>trim($c[11]??'')?:null,'timezone'=>trim($c[17]??'')?:null,'elevation'=>is_numeric($c[15]??null)?(int)$c[15]:null,'alternate_names'=>trim($c[3]??'')?:null,'source_updated_at'=>preg_match('/^\d{4}-\d{2}-\d{2}$/',$c[18]??'')?$c[18]:null,'created_at'=>now(),'updated_at'=>now()];
    if(count($batch)>=2000){$inserted=DB::table('cities')->insertOrIgnore($batch);$this->stats['cities_imported']+=$inserted;$this->stats['duplicate_cities']+=count($batch)-$inserted;$batch=[];}
   }
-  if($batch){$inserted=DB::table('cities')->insertOrIgnore($batch);$this->stats['cities_imported']+=$inserted;$this->stats['duplicate_cities']+=count($batch)-$inserted;}fclose($s);$z->close();$this->stats['countries_missing']=max(0,count($countryIds)-Country::whereIn('id',array_values($countryIds))->count());
+  if($batch){$inserted=DB::table('cities')->insertOrIgnore($batch);$this->stats['cities_imported']+=$inserted;$this->stats['duplicate_cities']+=count($batch)-$inserted;}fclose($s);$z->close();$this->stats['countries_missing']=max(0,(int)($this->stats['source_country_count']??count($countryIds))-(int)$this->stats['countries_imported']);
  }
 }
