@@ -42,7 +42,7 @@ class GeoNamesImporter {
   fclose($s);$z->close(); foreach($rows as &$r){$x=$cap[$r['iso2']]??null;if($x&&is_numeric($x['lat'])&&is_numeric($x['lng'])){$r['latitude']=(float)$x['lat'];$r['longitude']=(float)$x['lng'];$r['timezone']=$x['timezone']?:null;}}unset($r);return $rows;
  }
  private function parseM49(string $html):array {
-  $map=[];preg_match_all('/<tr[^>]*>(.*?)<\/tr>/is',$html,$rows);foreach($rows[1]??[] as $row){preg_match_all('/<t[dh][^>]*>(.*?)<\/t[dh]>/is',$row,$cells);$cells=array_map(fn($v)=>trim(html_entity_decode(strip_tags($v),ENT_QUOTES|ENT_HTML5,'UTF-8')),$cells[1]??[]);if(count($cells)<10)continue;$iso=strtoupper($cells[9]??'');if(!preg_match('/^[A-Z]{3}$/',$iso)||isset($map[$iso]))continue;$map[$iso]=['region'=>$cells[3]??null,'subregion'=>$cells[5]??null];}return $map;
+  $map=[];preg_match_all('/<tr[^>]*>(.*?)<\/tr>/is',$html,$rows);foreach($rows[1]??[] as $row){preg_match_all('/<t[dh][^>]*>(.*?)<\/t[dh]>/is',$row,$cells);$cells=array_map(fn($v)=>trim(html_entity_decode(strip_tags($v),ENT_QUOTES|ENT_HTML5,'UTF-8')),$cells[1]??[]);if(count($cells)<10)continue;$iso=strtoupper($cells[10]??'');if(!preg_match('/^[A-Z]{3}$/',$iso)||isset($map[$iso]))continue;$map[$iso]=['region'=>$cells[3]??null,'subregion'=>$cells[5]??null];}return $map;
  }
  private function importCountries(array $rows):void {foreach(array_chunk($rows,100)as$chunk){DB::table('countries')->insert($chunk);$this->stats['countries_imported']+=count($chunk);}}
  private function importPlaces(string $zipPath,array $countryIds):void {
